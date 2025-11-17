@@ -22,22 +22,17 @@ class WaitJob(Thread):
         bot = self.bot; accid = self.a; chatid = self.c; timestamp = self.t
         now = int(datetime.datetime.now().strftime('%s'))
         time.sleep(max(0, timestamp - now))
-        userdir = f"chats/a{accid}c{chatid}"
-        _ensure_userdir(bot, userdir)
-        with open(f"{userdir}/instruction_pointer.txt") as f:
-            p = int(f.read())
-        with open(f"{userdir}/script.txt") as f:
-            script = parse_script(f.read())
-        if p < len(script):
-            reply = MsgData(text=script[p]["reply"])
+        userdir, script, pointer = get_userdir(bot, accid, chatid)
+        if pointer < len(script):
+            reply = MsgData(text=script[pointer]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
-            if p+1 >= len(script):
+            if pointer+1 >= len(script):
                 # TODO: This was the last instruction. If any action is to be
                 # taken after the last instruction, take that action here!
                 pass
             with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-                print(p+1, file=f)
+                print(pointer+1, file=f)
         os.remove(f"tasks/a{accid}c{chatid}.wait")
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
 
@@ -77,13 +72,10 @@ def log_event(bot, accid, event):
                 and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
             # Bot's QR scanned by an user. This could be a new chat.
             chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
-            userdir = f"chats/a{accid}c{chatid}"
             if os.path.isdir(userdir):
-                bot.logger.info(f"Recreated chat '{userdir}'")
+                bot.logger.info(f"Recreated chat 'a{accid}c{chatid}'")
                 return
-            _ensure_userdir(bot, userdir)
-            with open(f"{userdir}/script.txt") as f:
-                script = parse_script(f.read())
+            userdir, script, pointer = get_userdir(bot, accid, chatid)
             if len(script) > 0 and script[0]["command"] == "":
                 reply = MsgData(text=script[0]["reply"])
                 log_message(userdir, reply)
@@ -92,29 +84,31 @@ def log_event(bot, accid, event):
                     print(1, file=f)
             bot.logger.info(f"Created new chat '{userdir}'")
 
-def _ensure_userdir(bot, userdir: str) -> None:
+def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
-    Ensure that the userdir exists. If it does not exist yet, it is
-    initialized.
+    Read the userdir (or initialize it if it does not yet exist).
+
+    Returns: userdir, script, instruction_pointer
     """
-    if os.path.isdir(userdir): return
-    os.makedirs(userdir)
-    with open(f"{userdir}/script.txt", "w") as f:
-        f.write(bot.script)
-    with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-        print(0, file=f)
+    userdir = f"chats/a{accid}c{chatid}"
+    if not os.path.isdir(userdir):
+        os.makedirs(userdir)
+        with open(f"{userdir}/script.txt", "w") as f:
+            f.write(bot.script)
+        with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+            print(0, file=f)
+    with open(f"{userdir}/script.txt") as f:
+        script = parse_script(f.read())
+    with open(f"{userdir}/instruction_pointer.txt") as f:
+        pointer = int(f.read())
+    return userdir, script, pointer
 
 @cli.on(events.NewMessage)
 def handle_message(bot, accid, event):
-    userdir = f"chats/a{accid}c{event.msg.chat_id}"
-    _ensure_userdir(bot, userdir)
+    userdir, script, pointer = get_userdir(bot, accid, event.msg.chat_id)
     log_message(userdir, event.msg)
-    with open(f"{userdir}/instruction_pointer.txt") as f:
-        pointer = int(f.read())
-    with open(f"{userdir}/script.txt") as f:
-        script = parse_script(f.read())
     if pointer >= len(script):
-        bot.logger.info("No instructions left in script")
+        bot.logger.info(f"No instructions left in script for {userdir}")
         return
     inst = script[pointer]
     if inst["command"] == "wait-for":
