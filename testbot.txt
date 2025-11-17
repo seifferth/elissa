@@ -18,7 +18,14 @@ To continue, send a voice message.
 
 % wait-for voice %otherwise% This is not a voice message.
 
-You can now send any messages you want, including none. The chatbot should get back to you in roughly one minute.
+To continue, send three separate text messages followed by a single voice message. There will be no further user interaction until all four messages have arrived.
+
+% wait-for text
+% wait-for text
+% wait-for text
+% wait-for voice
+
+Thank you for sending the four messages as requested. You can now send any messages you want, including none. The chatbot should get back to you in roughly one minute.
 
 % wait 1 min
 
