@@ -42,11 +42,7 @@ def log_event(bot, accid, event):
             if os.path.isdir(userdir):
                 bot.logger.info(f"Recreated chat '{userdir}'")
                 return
-            os.makedirs(userdir)
-            with open(f"{userdir}/script.txt", "w") as f:
-                f.write(bot.script)
-            with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-                print(0, file=f)
+            _ensure_userdir(bot, userdir)
             with open(f"{userdir}/script.txt") as f:
                 script = parse_script(f.read())
             if len(script) > 0 and script[0]["command"] == "":
@@ -57,9 +53,22 @@ def log_event(bot, accid, event):
                     print(1, file=f)
             bot.logger.info(f"Created new chat '{userdir}'")
 
+def _ensure_userdir(bot, userdir: str) -> None:
+    """
+    Ensure that the userdir exists. If it does not exist yet, it is
+    initialized.
+    """
+    if os.path.isdir(userdir): return
+    os.makedirs(userdir)
+    with open(f"{userdir}/script.txt", "w") as f:
+        f.write(bot.script)
+    with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+        print(0, file=f)
+
 @cli.on(events.NewMessage)
 def handle_message(bot, accid, event):
     userdir = f"chats/a{accid}c{event.msg.chat_id}"
+    _ensure_userdir(bot, userdir)
     log_message(userdir, event.msg)
     with open(f"{userdir}/instruction_pointer.txt") as f:
         pointer = int(f.read())
