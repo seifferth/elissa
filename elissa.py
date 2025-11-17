@@ -1,10 +1,45 @@
 #!/usr/bin/env python3
 
-import sys, os
+import sys, os, re, datetime, time
+from threading import Thread
 from deltabot_cli import BotCli
 from deltachat2 import EventType, MsgData, events
 
 cli = BotCli("elissa")
+
+class WaitJob(Thread):
+    def __init__(self, bot, accid: int, chatid: int, timestamp: int):
+        super().__init__(); self.daemon = True
+        self.bot = bot; self.a = accid; self.c = chatid; self.t = timestamp
+    def run(self):
+        bot = self.bot; accid = self.a; chatid = self.c; timestamp = self.t
+        with open(f"tasks/a{accid}c{chatid}.wait", "w") as f:
+            print(timestamp, file=f)
+        bot.logger.info(
+            f"Scheduled task a{accid}c{chatid}.wait for " +
+            datetime.datetime.fromtimestamp(timestamp)\
+                             .strftime("%m/%d/%y %H:%M:%S")
+        )
+        now = int(datetime.datetime.now().strftime('%s'))
+        time.sleep(max(0, timestamp - now))
+        userdir = f"chats/a{accid}c{chatid}"
+        _ensure_userdir(bot, userdir)
+        with open(f"{userdir}/instruction_pointer.txt") as f:
+            p = int(f.read())
+        with open(f"{userdir}/script.txt") as f:
+            script = parse_script(f.read())
+        if p < len(script):
+            reply = MsgData(text=script[p]["reply"])
+            log_message(userdir, reply)
+            bot.rpc.send_msg(accid, chatid, reply)
+            if p+1 >= len(script):
+                # TODO: This was the last instruction. If any action is to be
+                # taken after the last instruction, take that action here!
+                pass
+            with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+                print(p+1, file=f)
+        os.remove(f"tasks/a{accid}c{chatid}.wait")
+        bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
 
 @cli.on_start
 def on_start(bot, args):
@@ -16,12 +51,16 @@ def on_start(bot, args):
     except Exception as e:
         exit(e)
     bot.logger.info(f"Script file '{args.script}' read without errors")
-    # TODO: Start some kind of background thread that monitors some place
-    # where wait commands can be queued. Maybe also using inotify? The
-    # background thread should then execute those wait commands once
-    # the time to do so has come. Afterwards, the background thread also
-    # needs to advance the relevant execution pointer so that that chat
-    # is no longer blocked.
+    # Wake any tasks that might have been left from a previous run
+    if not os.path.isdir("tasks"): os.makedirs("tasks")
+    for t in os.listdir("tasks"):
+        if not t.endswith(".wait"): continue
+        a, c = map(int, re.match(r"a([0-9]+)c([0-9]+)\.wait", t)\
+                          .groups())
+        with open(f"tasks/{t}") as f:
+            timestamp = int(f.read())
+        bot.logger.info(f"Resurrecting task {t}")
+        WaitJob(bot, a, c, timestamp).start()
 
 @cli.on(events.RawEvent)
 def log_event(bot, accid, event):
@@ -117,16 +156,21 @@ def handle_message(bot, accid, event):
         # taken after the last instruction, take that action here!
         pass
     elif script[pointer+1]["command"] == "wait":
-        # TODO: The next command is a wait command. The execution of
-        # that command must be scheduled and the run independently of
-        # incoming messages. Afterwards, the pointer must be advanced
-        # as well so that incoming messages can again trigger actions.
-        # Until the pointer advances beyond the wait command, all incoming
-        # messages will be ignored (see above).
-        #
-        # Valid units of time for the wait command are sec, min, h and
-        # d. The first argument must be an integer.
-        pass
+        amount, unit = script[pointer+1]["args"]
+        if unit == "sec":
+            delta = int(amount)
+        elif unit == "min":
+            delta = int(amount) * 60
+        elif unit == "h":
+            delta = int(amount) * 60 * 60
+        elif unit == "d":
+            delta = int(amount) * 60 * 60 * 24
+        else:
+            bot.logger.error(f"Unknown unit of time '{unit}'"\
+                             f" found in script at instruction {pointer}.")
+            delta = 0   # The best we can do at this point
+        t = int(datetime.datetime.now().strftime('%s')) + delta
+        WaitJob(bot, accid, event.msg.chat_id, t).start()
     with open(f"{userdir}/instruction_pointer.txt", "w") as f:
         print(pointer+1, file=f)
 
