@@ -112,7 +112,7 @@ def log_event(bot, accid, event):
             bot.rpc.send_msg(accid, chatid, reply)
             advance_instruction_pointer(userdir)
         # Start executing the script until it blocks.
-        continue_execution(bot, accid, event.msg.chat_id, userdir, script)
+        continue_execution(bot, accid, chatid, userdir, script)
 
 def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
