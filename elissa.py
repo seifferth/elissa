@@ -188,6 +188,7 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
     if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
         # taken after the last instruction, take that action here!
+        export_chat(bot, accid, chatid)
         return
     elif script[pointer]["command"] == "wait-for":
         return                          # Block until the next message arrives
