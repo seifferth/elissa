@@ -2,10 +2,50 @@
 
 import sys, os, re, datetime, time
 from threading import Thread
+from zipfile import ZipFile
 from deltabot_cli import BotCli
 from deltachat2 import EventType, MsgData, events
 
 cli = BotCli("elissa")
+
+def get_chat_name(bot, accid: int, chatid: int) -> str:
+    """
+    Since 1:1 chats are named after contacts, this is a quick way to
+    get the contact's name.
+    """
+    return bot.rpc.get_full_chat_by_id(accid, chatid).name
+def export_chat(bot, accid: int, chatid: int, include_media=True) -> str:
+    """
+    Export the specified chat to a zip file and return the filename.
+    """
+    vcard = bot.rpc.make_vcard(accid,
+                               bot.rpc.get_chat_contacts(accid, chatid))
+    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
+    msgdict = bot.rpc.get_messages(accid, mids)
+    chatlog = []; media = {}
+    for i in mids:
+        m = msgdict[str(i)]
+        t = datetime.datetime.fromtimestamp(m.timestamp)
+        if m.text and not m.sender.auth_name:
+            chatlog.append(f"[{t}] {m.text}")
+        elif m.text:
+            chatlog.append(f"[{t}] {m.sender.auth_name}: {m.text}" +
+                           (" [edited]" if m.is_edited else ""))
+        if m.file and m.file_name:
+            chatlog.append(f"[{t}] {m.sender.auth_name} sent {m.file_name}")
+            media[m.file_name] = m.file
+    zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat.zip"
+    with ZipFile(zipfilename, "w") as z:
+        with z.open("contact.vcard", "w") as f:
+            f.write(vcard.encode("utf-8"))
+        with z.open("chat_log.txt", "w") as f:
+            f.write("\n".join(chatlog).encode("utf-8"))
+        if include_media:
+            for name, path in media.items():
+                with open(path, "rb") as f_in:
+                    with z.open(name, "w") as f_out:
+                        f_out.write(f_in.read())
+    return zipfilename
 
 class WaitJob(Thread):
     def __init__(self, bot, accid: int, chatid: int, timestamp: int):
