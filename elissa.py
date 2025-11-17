@@ -60,9 +60,7 @@ def log_event(bot, accid, event):
     and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
         # Bot's QR scanned by an user. This could be a new chat.
         chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
-        if os.path.isdir(userdir):
-            bot.logger.info(f"Recreated chat 'a{accid}c{chatid}'")
-            return
+        bot.logger.info(f"Created chat 'a{accid}c{chatid}'")
         userdir, script, pointer = get_userdir(bot, accid, chatid)
         # If applicable, send greeting message
         if pointer == 0 and len(script) > 0 and script[0]["command"] == "":
@@ -70,7 +68,6 @@ def log_event(bot, accid, event):
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
             advance_instruction_pointer(userdir)
-        bot.logger.info(f"Created new chat '{userdir}'")
         # Start executing the script until it blocks.
         continue_execution(bot, accid, event.msg.chat_id, userdir, script)
 
