@@ -1,0 +1,25 @@
+Greeting message goes here. If this greeting message is empty, i.e. if the script starts directly with a command, the bot will wait for the user to send the first message. To continue, please send any kind of text. E.g. "Hello world!".
+
+% wait-for text
+
+To continue, say "continue".
+
+% wait-for text %match% continue %otherwise% You did not say "continue".
+
+To continue, say "friend".
+
+% wait-for text %match% friend
+
+To continue, send an image.
+
+% wait-for image %otherwise% This is not an image.
+
+To continue, send a voice message.
+
+% wait-for voice %otherwise% This is not a voice message.
+
+You can now send any messages you want, including none. The chatbot should get back to you in roughly one minute.
+
+% wait 1 min
+
+This is the end of the chatbot simulation program. You can still send messages to this chat, but you will not get any further replies. Thank you for playing.
