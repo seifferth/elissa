@@ -59,30 +59,22 @@ def on_start(bot, args):
 
 @cli.on(events.RawEvent)
 def log_event(bot, accid, event):
-    if event.kind == EventType.INFO:
-        bot.logger.debug(event.msg)
-    elif event.kind == EventType.WARNING:
-        bot.logger.warning(event.msg)
-    elif event.kind == EventType.ERROR:
-        bot.logger.error(event.msg)
-    elif event.kind == EventType.MSG_DELIVERED:
-        bot.rpc.delete_messages(accid, [event.msg_id])
-    elif event.kind == EventType.SECUREJOIN_INVITER_PROGRESS:
-        if event.progress == 1000 \
-                and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
-            # Bot's QR scanned by an user. This could be a new chat.
-            chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
-            if os.path.isdir(userdir):
-                bot.logger.info(f"Recreated chat 'a{accid}c{chatid}'")
-                return
-            userdir, script, pointer = get_userdir(bot, accid, chatid)
-            if len(script) > 0 and script[0]["command"] == "":
-                reply = MsgData(text=script[0]["reply"])
-                log_message(userdir, reply)
-                bot.rpc.send_msg(accid, chatid, reply)
-                with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-                    print(1, file=f)
-            bot.logger.info(f"Created new chat '{userdir}'")
+    if event.kind == EventType.SECUREJOIN_INVITER_PROGRESS \
+    and event.progress == 1000 \
+    and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
+        # Bot's QR scanned by an user. This could be a new chat.
+        chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
+        if os.path.isdir(userdir):
+            bot.logger.info(f"Recreated chat 'a{accid}c{chatid}'")
+            return
+        userdir, script, pointer = get_userdir(bot, accid, chatid)
+        if len(script) > 0 and script[0]["command"] == "":
+            reply = MsgData(text=script[0]["reply"])
+            log_message(userdir, reply)
+            bot.rpc.send_msg(accid, chatid, reply)
+            with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+                print(1, file=f)
+        bot.logger.info(f"Created new chat '{userdir}'")
 
 def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
