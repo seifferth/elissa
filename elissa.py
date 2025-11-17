@@ -116,8 +116,8 @@ def handle_message(bot, accid, event):
         # "otherwise" action in the process. After the wait command is
         # done, the execution pointer will be advanced independently of
         # incoming messages (see below).
-        if "otherwise" in inst and inst["otherwise"].strip():
-            reply = MsgData(text=inst["otherwise"])
+        if "otherwise" in inst and inst["otherwise"]:
+            reply = MsgData(text=" ".join(inst["otherwise"]))
             bot.rpc.send_msg(accid, msg.chat_id, reply)
             log_message(userdir, reply)
         return
