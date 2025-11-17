@@ -137,9 +137,8 @@ def handle_message(bot, accid, event):
         # this code path should be dead since the script is validated
         # when it is read.
         c = inst["command"]
-        bot.logger.error(
-            f"Unknown command '{c}' found in script at instruction {pointer}."
-        )
+        bot.logger.error(f"Unknown command '{c}' found in"\
+                         f"'{userdir}/script.txt' at instruction {pointer}.")
     # Since we did not return early, the instruction seems to have worked.
     if inst["reply"].strip():
         reply = MsgData(text=inst["reply"])
