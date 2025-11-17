@@ -204,7 +204,8 @@ def parse_command(command: str) -> dict:
 def validate_script(parsed_script: list[dict]) -> None:
     # Validate the script semantics; otherwise raise an exception
     for i, inst in enumerate(parsed_script):
-        # Check that "command" and "reply" exist.
+        # Check that "command" and "reply" exist. Note that their value
+        # can still be the emtpy string.
         if not "command" in inst:
             raise Exception(f"Instruction {i} has no command")
         if not "reply" in inst:
