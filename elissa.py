@@ -10,9 +10,6 @@ cli = BotCli("elissa")
 class WaitJob(Thread):
     def __init__(self, bot, accid: int, chatid: int, timestamp: int):
         super().__init__(); self.daemon = True
-        self.bot = bot; self.a = accid; self.c = chatid; self.t = timestamp
-    def run(self):
-        bot = self.bot; accid = self.a; chatid = self.c; timestamp = self.t
         with open(f"tasks/a{accid}c{chatid}.wait", "w") as f:
             print(timestamp, file=f)
         bot.logger.info(
@@ -20,6 +17,9 @@ class WaitJob(Thread):
             datetime.datetime.fromtimestamp(timestamp)\
                              .strftime("%m/%d/%y %H:%M:%S")
         )
+        self.bot = bot; self.a = accid; self.c = chatid; self.t = timestamp
+    def run(self):
+        bot = self.bot; accid = self.a; chatid = self.c; timestamp = self.t
         now = int(datetime.datetime.now().strftime('%s'))
         time.sleep(max(0, timestamp - now))
         userdir = f"chats/a{accid}c{chatid}"
