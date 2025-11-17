@@ -118,7 +118,7 @@ def handle_message(bot, accid, event):
         # incoming messages (see below).
         if "otherwise" in inst and inst["otherwise"]:
             reply = MsgData(text=" ".join(inst["otherwise"]))
-            bot.rpc.send_msg(accid, msg.chat_id, reply)
+            bot.rpc.send_msg(accid, event.msg.chat_id, reply)
             log_message(userdir, reply)
         return
     else:
