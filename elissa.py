@@ -138,8 +138,7 @@ def handle_message(bot, accid, event):
     userdir, script, pointer = get_userdir(bot, accid, event.msg.chat_id)
     log_message(userdir, event.msg)
     if pointer >= len(script):
-        bot.logger.info(f"No instructions left in script for {userdir}")
-        return
+        return  # Ignore messages that arrive after the script is finished
     inst = script[pointer]
     if inst["command"] == "wait-for":
         if event.msg.view_type.lower() != inst["args"][0] \
