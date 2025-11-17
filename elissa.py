@@ -10,7 +10,8 @@ cli = BotCli("elissa")
 class WaitJob(Thread):
     def __init__(self, bot, accid: int, chatid: int, timestamp: int):
         super().__init__(); self.daemon = True
-        with open(f"tasks/a{accid}c{chatid}.wait", "w") as f:
+        taskfile = f"{bot.user_basedir}/tasks/a{accid}c{chatid}.wait"
+        with open(taskfile, "w") as f:
             print(timestamp, file=f)
         bot.logger.info(
             f"Scheduled task a{accid}c{chatid}.wait for " +
@@ -28,7 +29,7 @@ class WaitJob(Thread):
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
         advance_instruction_pointer(userdir)
-        os.remove(f"tasks/a{accid}c{chatid}.wait")
+        os.remove(f"{bot.user_basedir}/tasks/a{accid}c{chatid}.wait")
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
         continue_execution(bot, accid, chatid, userdir, script)
 
@@ -37,18 +38,20 @@ def on_start(bot, args):
     if not args.script: exit("The --script option is mandatory with serve")
     with open(args.script) as f:
         bot.script = f.read()
+        bot.user_basedir = args.config_dir
     try:
         _ = parse_script(bot.script)
     except Exception as e:
         exit(e)
     bot.logger.info(f"Script file '{args.script}' read without errors")
     # Wake any tasks that might have been left from a previous run
-    if not os.path.isdir("tasks"): os.makedirs("tasks")
-    for t in os.listdir("tasks"):
+    taskdir = f"{bot.user_basedir}/tasks"
+    if not os.path.isdir(taskdir): os.makedirs(taskdir)
+    for t in os.listdir(taskdir):
         if not t.endswith(".wait"): continue
         a, c = map(int, re.match(r"a([0-9]+)c([0-9]+)\.wait", t)\
                           .groups())
-        with open(f"tasks/{t}") as f:
+        with open(f"{taskdir}/{t}") as f:
             timestamp = int(f.read())
         bot.logger.info(f"Resurrecting task {t}")
         WaitJob(bot, a, c, timestamp).start()
@@ -77,7 +80,7 @@ def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
 
     Returns: userdir, script, instruction_pointer
     """
-    userdir = f"chats/a{accid}c{chatid}"
+    userdir = f"{bot.user_basedir}/chats/a{accid}c{chatid}"
     if not os.path.isdir(userdir):
         os.makedirs(userdir)
         with open(f"{userdir}/script", "w") as f:
