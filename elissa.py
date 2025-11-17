@@ -83,13 +83,13 @@ def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     userdir = f"chats/a{accid}c{chatid}"
     if not os.path.isdir(userdir):
         os.makedirs(userdir)
-        with open(f"{userdir}/script.txt", "w") as f:
+        with open(f"{userdir}/script", "w") as f:
             f.write(bot.script)
-        with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+        with open(f"{userdir}/instruction_pointer", "w") as f:
             print(0, file=f)
-    with open(f"{userdir}/script.txt") as f:
+    with open(f"{userdir}/script") as f:
         script = parse_script(f.read())
-    with open(f"{userdir}/instruction_pointer.txt") as f:
+    with open(f"{userdir}/instruction_pointer") as f:
         pointer = int(f.read())
     return userdir, script, pointer
 
@@ -128,7 +128,7 @@ def handle_message(bot, accid, event):
         # when it is read.
         c = inst["command"]
         bot.logger.error(f"Processed reply for unknown command '{c}' in"\
-                         f"'{userdir}/script.txt' at instruction {pointer}.")
+                         f"'{userdir}/script' at instruction {pointer}.")
     # Since we did not return early, the instruction seems to have worked.
     if inst["reply"].strip():
         reply = MsgData(text=inst["reply"])
@@ -137,7 +137,7 @@ def handle_message(bot, accid, event):
     continue_execution(bot, accid, event.msg.chat_id, userdir, script, pointer+1)
 
 def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
-    with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+    with open(f"{userdir}/instruction_pointer", "w") as f:
         print(pointer, file=f)
     if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
@@ -157,7 +157,7 @@ def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
             delta = int(amount) * 60 * 60 * 24
         else:
             bot.logger.error(f"Unknown unit of time '{unit}' found in "\
-                             f"{userdir}/script.txt at instruction {pointer}.")
+                             f"{userdir}/script at instruction {pointer}.")
             delta = 0   # The best we can do at this point
         t = int(datetime.datetime.now().strftime('%s')) + delta
         WaitJob(bot, accid, chatid, t).start()
@@ -167,11 +167,11 @@ def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
         # error and simply ignore the command.
         c = inst["command"]
         bot.logger.error(f"Skipped unknown command '{c}' in"\
-                         f"'{userdir}/script.txt' at instruction {pointer}.")
+                         f"'{userdir}/script' at instruction {pointer}.")
     continue_execution(bot, accid, chatid, userdir, script, pointer+1)
 
 def log_message(userdir: str, message) -> None:
-    with open(f"{userdir}/conversation_log.txt", "a") as f:
+    with open(f"{userdir}/conversation.log", "a") as f:
         print(message, file=f)
 
 def parse_command(command: str) -> dict:
