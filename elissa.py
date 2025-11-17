@@ -27,9 +27,10 @@ class WaitJob(Thread):
             reply = MsgData(text=script[pointer]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
+        advance_instruction_pointer(userdir)
         os.remove(f"tasks/a{accid}c{chatid}.wait")
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
-        continue_execution(bot, accid, chatid, userdir, script, pointer+1)
+        continue_execution(bot, accid, chatid, userdir, script)
 
 @cli.on_start
 def on_start(bot, args):
@@ -68,11 +69,10 @@ def log_event(bot, accid, event):
             reply = MsgData(text=script[0]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
-            pointer += 1
+            advance_instruction_pointer(userdir)
         bot.logger.info(f"Created new chat '{userdir}'")
         # Start executing the script until it blocks.
-        continue_execution(bot, accid, event.msg.chat_id, userdir, script,
-                           pointer)
+        continue_execution(bot, accid, event.msg.chat_id, userdir, script)
 
 def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
@@ -134,11 +134,17 @@ def handle_message(bot, accid, event):
         reply = MsgData(text=inst["reply"])
         bot.rpc.send_msg(accid, event.msg.chat_id, reply)
         log_message(userdir, reply)
-    continue_execution(bot, accid, event.msg.chat_id, userdir, script, pointer+1)
+    advance_instruction_pointer(userdir)
+    continue_execution(bot, accid, event.msg.chat_id, userdir, script)
 
-def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
+def advance_instruction_pointer(userdir) -> None:
+    with open(f"{userdir}/instruction_pointer") as f:
+        pointer = int(f.read())
     with open(f"{userdir}/instruction_pointer", "w") as f:
-        print(pointer, file=f)
+        print(pointer+1, file=f)
+def continue_execution(bot, accid, chatid, userdir, script) -> None:
+    with open(f"{userdir}/instruction_pointer") as f:
+        pointer = int(f.read())
     if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
         # taken after the last instruction, take that action here!
@@ -168,7 +174,8 @@ def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
         c = inst["command"]
         bot.logger.error(f"Skipped unknown command '{c}' in"\
                          f"'{userdir}/script' at instruction {pointer}.")
-    continue_execution(bot, accid, chatid, userdir, script, pointer+1)
+    advance_instruction_pointer(userdir)
+    continue_execution(bot, accid, chatid, userdir, script)
 
 def log_message(userdir: str, message) -> None:
     with open(f"{userdir}/conversation.log", "a") as f:
