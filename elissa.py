@@ -27,14 +27,9 @@ class WaitJob(Thread):
             reply = MsgData(text=script[pointer]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
-            if pointer+1 >= len(script):
-                # TODO: This was the last instruction. If any action is to be
-                # taken after the last instruction, take that action here!
-                pass
-            with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-                print(pointer+1, file=f)
         os.remove(f"tasks/a{accid}c{chatid}.wait")
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
+        continue_execution(bot, accid, chatid, userdir, script, pointer+1)
 
 @cli.on_start
 def on_start(bot, args):
@@ -68,13 +63,16 @@ def log_event(bot, accid, event):
             bot.logger.info(f"Recreated chat 'a{accid}c{chatid}'")
             return
         userdir, script, pointer = get_userdir(bot, accid, chatid)
-        if len(script) > 0 and script[0]["command"] == "":
+        # If applicable, send greeting message
+        if pointer == 0 and len(script) > 0 and script[0]["command"] == "":
             reply = MsgData(text=script[0]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
-            with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-                print(1, file=f)
+            pointer += 1
         bot.logger.info(f"Created new chat '{userdir}'")
+        # Start executing the script until it blocks.
+        continue_execution(bot, accid, event.msg.chat_id, userdir, script,
+                           pointer)
 
 def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
@@ -129,19 +127,26 @@ def handle_message(bot, accid, event):
         # this code path should be dead since the script is validated
         # when it is read.
         c = inst["command"]
-        bot.logger.error(f"Unknown command '{c}' found in"\
+        bot.logger.error(f"Processed reply for unknown command '{c}' in"\
                          f"'{userdir}/script.txt' at instruction {pointer}.")
     # Since we did not return early, the instruction seems to have worked.
     if inst["reply"].strip():
         reply = MsgData(text=inst["reply"])
         bot.rpc.send_msg(accid, event.msg.chat_id, reply)
         log_message(userdir, reply)
-    if pointer+1 >= len(script):
+    continue_execution(bot, accid, event.msg.chat_id, userdir, script, pointer+1)
+
+def continue_execution(bot, accid, chatid, userdir, script, pointer) -> None:
+    with open(f"{userdir}/instruction_pointer.txt", "w") as f:
+        print(pointer, file=f)
+    if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
         # taken after the last instruction, take that action here!
-        pass
-    elif script[pointer+1]["command"] == "wait":
-        amount, unit = script[pointer+1]["args"]
+        return
+    elif script[pointer]["command"] == "wait-for":
+        return                          # Block until the next message arrives
+    elif script[pointer]["command"] == "wait":
+        amount, unit = script[pointer]["args"]
         if unit == "sec":
             delta = int(amount)
         elif unit == "min":
@@ -151,13 +156,19 @@ def handle_message(bot, accid, event):
         elif unit == "d":
             delta = int(amount) * 60 * 60 * 24
         else:
-            bot.logger.error(f"Unknown unit of time '{unit}'"\
-                             f" found in script at instruction {pointer}.")
+            bot.logger.error(f"Unknown unit of time '{unit}' found in "\
+                             f"{userdir}/script.txt at instruction {pointer}.")
             delta = 0   # The best we can do at this point
         t = int(datetime.datetime.now().strftime('%s')) + delta
-        WaitJob(bot, accid, event.msg.chat_id, t).start()
-    with open(f"{userdir}/instruction_pointer.txt", "w") as f:
-        print(pointer+1, file=f)
+        WaitJob(bot, accid, chatid, t).start()
+        return                          # Block until the wait job terminates
+    else:
+        # If we encounter an unknown command at this point, we log an
+        # error and simply ignore the command.
+        c = inst["command"]
+        bot.logger.error(f"Skipped unknown command '{c}' in"\
+                         f"'{userdir}/script.txt' at instruction {pointer}.")
+    continue_execution(bot, accid, chatid, userdir, script, pointer+1)
 
 def log_message(userdir: str, message) -> None:
     with open(f"{userdir}/conversation_log.txt", "a") as f:
