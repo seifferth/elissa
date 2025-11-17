@@ -211,7 +211,7 @@ def validate_script(parsed_script: list[dict]) -> None:
             raise Exception(f"Instruction {i} has no reply")
         # Check that command is within a known set of commands and has
         # the expected arguments.
-        if inst["command"] == "":
+        if i == 0 and inst["command"] == "":
             pass    # This is allowed and results in the greeting message.
         elif inst["command"] == "wait-for":
             if len(inst["args"]) != 1:
