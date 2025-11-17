@@ -23,7 +23,7 @@ class WaitJob(Thread):
         now = int(datetime.datetime.now().strftime('%s'))
         time.sleep(max(0, timestamp - now))
         userdir, script, pointer = get_userdir(bot, accid, chatid)
-        if pointer < len(script):
+        if pointer < len(script) and script[pointer]["reply"].strip():
             reply = MsgData(text=script[pointer]["reply"])
             log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
