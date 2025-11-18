@@ -337,6 +337,12 @@ def log_message(userdir: str, message) -> None:
         print(message, file=f)
 
 def validate_script(parsed_script: list[dict]) -> None:
+    def check_subclauses(i: int, inst: dict, allowed_subclauses: list):
+        for k in inst.keys():
+            if k in ["command", "args", "reply"]: continue
+            if k in allowed_subclauses: continue
+            raise Exception(f"Error at instruction {i}: subclause {k} is "\
+                            f"not allowed with command '{inst['command']}")
     # Validate the script semantics; otherwise raise an exception
     for i, inst in enumerate(parsed_script):
         # Check that "command" and "reply" exist. Note that their value
@@ -350,6 +356,7 @@ def validate_script(parsed_script: list[dict]) -> None:
         if i == 0 and inst["command"] == "":
             pass    # This is allowed and results in the greeting message.
         elif inst["command"] == "wait-for":
+            check_subclauses(i, inst, ["match", "otherwise"])
             if len(inst["args"]) != 1:
                 raise Exception(f"Error at instruction {i}: "\
                                  "wait-for takes exactly one argument")
@@ -360,6 +367,7 @@ def validate_script(parsed_script: list[dict]) -> None:
                 raise Exception(f"Error at instruction {i}: "\
                                  "%match% is only allowed with wait-for text")
         elif inst["command"] == "wait":
+            check_subclauses(i, inst, ["otherwise"])
             if len(inst["args"]) != 2:
                 raise Exception(f"Error at instruction {i}: "\
                                  "wait takes exactly two arguments")
@@ -373,8 +381,8 @@ def validate_script(parsed_script: list[dict]) -> None:
                 raise Exception(f"Error at instruction {i}: "\
                                 f"unable to parse '{arg0}' as an integer")
         else:
-            c = inst["command"]
-            raise Exception(f"Unknown command '{c}' found at instruction {i}")
+            raise Exception(f"Error at instruction {i}: "\
+                            f"Unknown command '{inst['command']}'")
 def parse_command(command: str) -> dict:
     result = {}
     if not command.startswith('%'):
@@ -385,11 +393,10 @@ def parse_command(command: str) -> dict:
             result["command"] = word
             context = "args"
             result[context] = []
-        elif word == "%match%":
-            context = "match"
-            result[context] = []
-        elif word == "%otherwise%":
-            context = "otherwise"
+        elif word in ["%command%", "%args%", "%reply%"]:
+            raise Exception(f"Reserved word '{word}' used as subclause")
+        elif word.startswith('%') and word.endswith('%') and len(word) > 2:
+            context = word[1:-1]
             result[context] = []
         else:
             result[context].append(word)
