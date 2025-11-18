@@ -8,9 +8,105 @@ from deltachat2 import EventType, MsgData, events
 
 cli = BotCli("elissa")
 
+def export_contact_vcf(bot, accid: int, chatid: int) -> str:
+    """
+    Export the contact(s) of the specified chat as a vcard file and
+    return the filename.
+    """
+    vcard = bot.rpc.make_vcard(accid,
+                               bot.rpc.get_chat_contacts(accid, chatid))
+    filename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/contact.vcf"
+    with open(filename, "wb") as f:
+        f.write(vcard.encode("utf-8"))
+    return filename
+def export_chat_log_txt(bot, accid: int, chatid: int) -> str:
+    """
+    Export the specified chat to an IRC-style text log and return the
+    filename.
+    """
+    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
+    msgdict = bot.rpc.get_messages(accid, mids)
+    chatlog = []
+    for i in mids:
+        m = msgdict[str(i)]
+        t = datetime.datetime.fromtimestamp(m.timestamp)
+        if m.text and not m.sender.auth_name:
+            chatlog.append(f"[{t}] {m.text}")
+        elif m.text:
+            chatlog.append(f"[{t}] {m.sender.auth_name}: {m.text}" +
+                           (" [edited]" if m.is_edited else ""))
+        if m.file and m.file_name:
+            chatlog.append(f"[{t}] {m.sender.auth_name} sent {m.file_name}")
+    logfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat_log.txt"
+    with open(logfilename, "wb") as f:
+        f.write("\n".join(chatlog).encode("utf-8"))
+    return logfilename
+def _export_last(view_type: str, bot, accid: int, chatid: int) -> str:
+    botaddr = bot.rpc.get_account_info(accid).addr
+    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
+    msgdict = bot.rpc.get_messages(accid, mids)
+    chatlog = []
+    for i in mids[::-1]:
+        m = msgdict[str(i)]
+        if m.sender.address == botaddr: continue   # Ignore sent messages
+        if m.view_type.lower() != view_type.lower(): continue
+        if view_type.lower() == "text":
+            fname = f"{bot.user_basedir}/chats/a{accid}c{chatid}/message.txt"
+            with open(fname, "wb") as f:
+                f.write(m.text.encode("utf-8"))
+            return fname
+        elif view_type.lower() in ["voice", "image"]:
+            return m.file
+        else:
+            raise Exception(f"Viewtype '{view_type}' is not implemented"\
+                             " in _export_last")
+        raise Exception("Executing presumed-dead code path in _export_last")
+    return None
+def export_last_text(bot, accid: int, chatid: int) -> str:
+    """
+    Export the last message sent by the user to a text file and return
+    the filename. If the user has not yet sent any message, the return
+    value will be None.
+    """
+    return _export_last("text", bot, accid, chatid)
+def export_last_image(bot, accid: int, chatid: int) -> str:
+    """
+    Export the image sent by the user by returning the filename of the
+    blob stored in the database. If the user has not yet sent an image,
+    the return value will be None.
+    """
+    return _export_last("image", bot, accid, chatid)
+def export_last_voice(bot, accid: int, chatid: int) -> str:
+    """
+    Export the voice message sent by the user by returning the filename
+    of the blob stored in the database. If the user has not yet sent a
+    voice message, the return value will be None.
+    """
+    return _export_last("voice", bot, accid, chatid)
+def export_media_zip(bot, accid: int, chatid: int) -> str:
+    """
+    Export all media found in the specified chat to a zip file and return
+    the filename. If there are no media in the chat, the return value
+    will be None.
+    """
+    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
+    msgdict = bot.rpc.get_messages(accid, mids)
+    media = {}
+    for i in mids:
+        m = msgdict[str(i)]
+        if m.file and m.file_name:
+            media[m.file_name] = m.file
+    if not media: return None
+    zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/media.zip"
+    with ZipFile(zipfilename, "w") as z:
+        for name, path in media.items():
+            with open(path, "rb") as f_in:
+                with z.open(name, "w") as f_out:
+                    f_out.write(f_in.read())
+    return zipfilename
 def export_chat_zip(bot, accid: int, chatid: int) -> str:
     """
-    Export the specified chat to a zip file and return the filename.
+    Export the full specified chat to a zip file and return the filename.
     """
     vcard = bot.rpc.make_vcard(accid,
                                bot.rpc.get_chat_contacts(accid, chatid))
