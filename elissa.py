@@ -136,8 +136,8 @@ class WaitJob(Thread):
         userdir, script, pointer = load_userdir(bot, accid, chatid)
         if pointer < len(script) and script[pointer]["reply"].strip():
             reply = MsgData(text=script[pointer]["reply"])
-            log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
+            log_message(userdir, reply)
         advance_instruction_pointer(userdir)
         os.remove(f"{bot.user_basedir}/tasks/a{accid}c{chatid}.wait")
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
@@ -212,8 +212,8 @@ def log_event(bot, accid, event):
         # If applicable, send greeting message
         if pointer == 0 and len(script) > 0 and script[0]["command"] == "":
             reply = MsgData(text=script[0]["reply"])
-            log_message(userdir, reply)
             bot.rpc.send_msg(accid, chatid, reply)
+            log_message(userdir, reply)
             advance_instruction_pointer(userdir)
         # Start executing the script until it blocks.
         continue_execution(bot, accid, chatid, userdir, script)
