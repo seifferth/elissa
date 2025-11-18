@@ -297,7 +297,6 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
     if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
         # taken after the last instruction, take that action here!
-        export_chat_zip(bot, accid, chatid)
         return
     elif script[pointer]["command"] == "wait-for":
         return                          # Block until the next message arrives
@@ -318,6 +317,48 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
         t = int(datetime.datetime.now().strftime('%s')) + delta
         WaitJob(bot, accid, chatid, t).start()
         return                          # Block until the wait job terminates
+    elif script[pointer]["command"] == "notify":
+        recipient, *notification = script[pointer]["args"]
+        rid = 0
+        if recipient == "admins":
+            rid = cli.get_admin_chat(bot.rpc, accid)
+            if rid == 0:
+                bot.logger.error("Unable to notify admins: admin chat "\
+                                f"for account {accid} is not configured.")
+        else:
+            bot.logger.error("Ignoring notify for unknown recipient "\
+                            f"'{recipient}' in {userdir}/script "\
+                            f"at instruction {pointer}.")
+        if rid != 0:
+            notification = " ".join(notification).strip(); attachments = []
+            if "attach" in script[pointer]:
+                for a in script[pointer]["attach"]:
+                    if a == "contact.vcf":     func = export_contact_vcf
+                    elif a == "chat_log.txt":  func = export_chat_log_txt
+                    elif a == "last-text":     func = export_last_text
+                    elif a == "last-image":    func = export_last_image
+                    elif a == "last-voice":    func = export_last_voice
+                    elif a == "media.zip":     func = export_media_zip
+                    elif a == "full_chat.zip": func = export_full_chat_zip
+                    else: func = None; bot.logger.error(
+                        f"Skipping unknown attachment '{a}' requested in "\
+                        f"{userdir}/script at instruction {pointer}.")
+                    # If the requested item exists, add it to the list
+                    # of attachments
+                    filename = func(bot, accid, chatid)
+                    if filename != None: attachments.append(filename)
+            if notification and attachments:
+                bot.rpc.send_msg(accid, rid, MsgData(text=notification,
+                                                     file=attachments[0]))
+                for f in attachments[1:]:
+                    bot.rpc.send_msg(accid, rid, MsgData(file=f))
+            elif notification:
+                bot.rpc.send_msg(accid, rid, MsgData(text=notification))
+            elif attachments:
+                for f in attachments:
+                    bot.rpc.send_msg(accid, rid, MsgData(file=f))
+            else:
+                bot.rpc.send_msg(accid, rid, MsgData(text="ping"))
     else:
         # If we encounter an unknown command at this point, we log an
         # error and simply treat the command as if it had been successful.
@@ -379,6 +420,20 @@ def validate_script(parsed_script: list[dict]) -> None:
                 arg0 = inst["args"][0]
                 raise Exception(f"Error at instruction {i}: "\
                                 f"unable to parse '{arg0}' as an integer")
+        elif inst["command"] == "notify":
+            check_subclauses(i, inst, ["attach"])
+            for item in inst.get("attach", []):
+                if item not in ["contact.vcf", "chat_log.txt", "last-text",
+                                "last-image", "last-voice", "media.zip",
+                                "full_chat.zip"]:
+                    raise Exception(f"Error at instruction {i}: "\
+                                    f"Unknown attachment '{item}'")
+            if len(inst["args"]) < 1:
+                raise Exception(f"Error at instruction {i}: "\
+                                 "'notify' takes at least one argument")
+            elif inst["args"][0] != "admins":
+                raise Exception(f"Error at instruction {i}: "\
+                                 "only 'notify admins' is implemented so far")
         else:
             raise Exception(f"Error at instruction {i}: "\
                             f"Unknown command '{inst['command']}'")

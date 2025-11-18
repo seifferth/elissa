@@ -1,6 +1,7 @@
 Greeting message goes here. If this greeting message is empty, i.e. if the script starts directly with a command, the bot will wait for the user to send the first message. To continue, please send any kind of text. E.g. "Hello world!".
 
 % wait-for text
+% notify admins A new user has replied to the greeting message.
 
 To continue, say "continue". Note that the matching function is case-sensitive.
 
@@ -30,3 +31,5 @@ Thank you for sending the four messages as requested. You can now send any messa
 % wait 1 min
 
 This is the end of the chatbot simulation program. You can still send messages to this chat, but you will not get any further replies. Thank you for playing.
+
+% notify admins A user has finished the script. %attach% contact.vcf chat_log.txt
