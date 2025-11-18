@@ -336,26 +336,6 @@ def log_message(userdir: str, message) -> None:
     with open(f"{userdir}/conversation.log", "a") as f:
         print(message, file=f)
 
-def parse_command(command: str) -> dict:
-    result = {}
-    if not command.startswith('%'):
-        raise Exception('Commands must start with "%"')
-    context = "start"
-    for word in command[1:].strip().split():
-        if context == "start":
-            result["command"] = word
-            context = "args"
-            result[context] = []
-        elif word == "%match%":
-            context = "match"
-            result[context] = []
-        elif word == "%otherwise%":
-            context = "otherwise"
-            result[context] = []
-        else:
-            result[context].append(word)
-    return result
-
 def validate_script(parsed_script: list[dict]) -> None:
     # Validate the script semantics; otherwise raise an exception
     for i, inst in enumerate(parsed_script):
@@ -395,7 +375,25 @@ def validate_script(parsed_script: list[dict]) -> None:
         else:
             c = inst["command"]
             raise Exception(f"Unknown command '{c}' found at instruction {i}")
-
+def parse_command(command: str) -> dict:
+    result = {}
+    if not command.startswith('%'):
+        raise Exception('Commands must start with "%"')
+    context = "start"
+    for word in command[1:].strip().split():
+        if context == "start":
+            result["command"] = word
+            context = "args"
+            result[context] = []
+        elif word == "%match%":
+            context = "match"
+            result[context] = []
+        elif word == "%otherwise%":
+            context = "otherwise"
+            result[context] = []
+        else:
+            result[context].append(word)
+    return result
 def parse_script(script: str):
     result = []; textblock = ""; command = None
     for line in script.splitlines():
