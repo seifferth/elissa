@@ -2,7 +2,7 @@ Greeting message goes here. If this greeting message is empty, i.e. if the scrip
 
 % wait-for text
 
-To continue, say "continue".
+To continue, say "continue". Note that the matching function is case-sensitive.
 
 % wait-for text %match% continue %otherwise% You did not say "continue".
 
