@@ -338,6 +338,10 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
             if rid == 0:
                 bot.logger.error("Unable to notify admins: admin chat "\
                                 f"for account {accid} is not configured.")
+            elif len(bot.rpc.get_chat_contacts(accid, rid)) < 2:
+                bot.logger.warning("Executing 'notify admins' instruction "\
+                                  f"for account {accid} with an empty "\
+                                   "admin chat.")
         else:
             bot.logger.error("Ignoring notify for unknown recipient "\
                             f"'{recipient}' in {userdir}/script "\
