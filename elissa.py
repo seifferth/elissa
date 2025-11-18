@@ -42,7 +42,7 @@ def export_chat_log_txt(bot, accid: int, chatid: int) -> str:
     with open(logfilename, "wb") as f:
         f.write(("\n".join(chatlog)+"\n").encode("utf-8"))
     return logfilename
-def _export_last(view_type: str, bot, accid: int, chatid: int) -> str:
+def _locate_last(view_type: str, bot, accid: int, chatid: int) -> int:
     botaddr = bot.rpc.get_account_info(accid).addr
     mids = bot.rpc.get_message_ids(accid, chatid, False, False)
     msgdict = bot.rpc.get_messages(accid, mids)
@@ -51,39 +51,29 @@ def _export_last(view_type: str, bot, accid: int, chatid: int) -> str:
         m = msgdict[str(i)]
         if m.sender.address == botaddr: continue   # Ignore sent messages
         if m.view_type.lower() != view_type.lower(): continue
-        if view_type.lower() == "text":
-            fname = f"{bot.user_basedir}/chats/a{accid}c{chatid}/message.txt"
-            with open(fname, "wb") as f:
-                f.write(m.text.encode("utf-8"))
-            return fname
-        elif view_type.lower() in ["voice", "image"]:
-            return m.file
-        else:
-            raise Exception(f"Viewtype '{view_type}' is not implemented"\
-                             " in _export_last")
-        raise Exception("Executing presumed-dead code path in _export_last")
+        return i
     return None
-def export_last_text(bot, accid: int, chatid: int) -> str:
+def locate_last_text(bot, accid: int, chatid: int) -> str:
     """
-    Export the last message sent by the user to a text file and return
-    the filename. If the user has not yet sent any message, the return
-    value will be None.
-    """
-    return _export_last("text", bot, accid, chatid)
-def export_last_image(bot, accid: int, chatid: int) -> str:
-    """
-    Export the image sent by the user by returning the filename of the
-    blob stored in the database. If the user has not yet sent an image,
+    Locate the last text-based message sent by the user and return
+    the message id. If the user has not yet sent a text-based message,
     the return value will be None.
     """
-    return _export_last("image", bot, accid, chatid)
-def export_last_voice(bot, accid: int, chatid: int) -> str:
+    return _locate_last("text", bot, accid, chatid)
+def locate_last_image(bot, accid: int, chatid: int) -> str:
     """
-    Export the voice message sent by the user by returning the filename
-    of the blob stored in the database. If the user has not yet sent a
-    voice message, the return value will be None.
+    Locate the last image sent by the user and return the corresponding
+    message id. If the user has not yet sent an image, the return value
+    will be None.
     """
-    return _export_last("voice", bot, accid, chatid)
+    return _locate_last("image", bot, accid, chatid)
+def locate_last_voice(bot, accid: int, chatid: int) -> str:
+    """
+    Locate the last voice message sent by the user and return the
+    corresponding message id. If the user has not yet sent a voice
+    message, the return value will be None.
+    """
+    return _locate_last("voice", bot, accid, chatid)
 def export_media_zip(bot, accid: int, chatid: int) -> str:
     """
     Export all media found in the specified chat to a zip file and return
@@ -348,9 +338,9 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
                 for a in script[pointer]["attach"]:
                     if a == "contact.vcf":     func = export_contact_vcf
                     elif a == "chat_log.txt":  func = export_chat_log_txt
-                    elif a == "last-text":     func = export_last_text
-                    elif a == "last-image":    func = export_last_image
-                    elif a == "last-voice":    func = export_last_voice
+                    elif a == "last-text":     func = locate_last_text
+                    elif a == "last-image":    func = locate_last_image
+                    elif a == "last-voice":    func = locate_last_voice
                     elif a == "media.zip":     func = export_media_zip
                     elif a == "full_chat.zip": func = export_full_chat_zip
                     else: func = None; bot.logger.error(
@@ -360,16 +350,24 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
                     # of attachments
                     filename = func(bot, accid, chatid)
                     if filename != None: attachments.append(filename)
-            if notification and attachments:
+            def send_attachments(attachments: list):
+                for a in attachments:
+                    if type(a) == str:      # An actual file attachment
+                        bot.rpc.send_msg(accid, rid, MsgData(file=a))
+                    elif type(a) == int:    # A message to be forwarded
+                        bot.rpc.forward_messages(accid, [a], rid)
+                    else:
+                        bot.logger.error("Received unknown attachment "\
+                                        f"of type '{type(a)}'")
+            if notification and attachments and type(attachments[0]) == str:
                 bot.rpc.send_msg(accid, rid, MsgData(text=notification,
                                                      file=attachments[0]))
-                for f in attachments[1:]:
-                    bot.rpc.send_msg(accid, rid, MsgData(file=f))
+                send_attachments(attachments[1:])
             elif notification:
                 bot.rpc.send_msg(accid, rid, MsgData(text=notification))
+                if attachments: send_attachments(attachments)
             elif attachments:
-                for f in attachments:
-                    bot.rpc.send_msg(accid, rid, MsgData(file=f))
+                send_attachments(attachments)
             else:
                 bot.rpc.send_msg(accid, rid, MsgData(text="ping"))
     else:
