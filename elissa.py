@@ -233,11 +233,24 @@ def load_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
         pointer = int(f.read())
     return userdir, script, pointer
 
+def is_regular_chat(bot, accid, chatid) -> bool:
+    chat_type = bot.rpc.get_basic_chat_info(accid, chatid).chat_type
+    if chat_type == 100:
+        return True         # This is probably an e2ee 1:1 conversation
+    elif chat_type == 120:
+        return False        # This is probably an e2ee group chat
+    else:
+        bot.logger.warn(f"Treating unknown chat a{accid}c{chatid} of type "\
+                        f"'{chat_type}' as a kind of non-regular chat")
+        return False
+
 @cli.on(events.NewMessage)
 def handle_message(bot, accid, event):
-    if cli.is_admin(bot.rpc, accid, event.msg.sender.id):
+    if not is_regular_chat(bot, accid, event.msg.chat_id):
+        return  # Do not send messages to non 1:1 conversations
+    elif cli.is_admin(bot.rpc, accid, event.msg.sender.id):
         return  # Do not treat admins as if they were regular users
-    userdir, script, pointer = get_userdir(bot, accid, event.msg.chat_id)
+    userdir, script, pointer = load_userdir(bot, accid, event.msg.chat_id)
     log_message(userdir, event.msg)
     if pointer >= len(script):
         return  # Ignore messages that arrive after the script is finished
