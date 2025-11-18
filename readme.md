@@ -31,6 +31,23 @@ please refer to the script named `testbot.txt`.
 
 * [deltabot-cli](https://github.com/deltachat-bot/deltabot-cli-py)
 
+## Commands supported in elissa scripts
+
+    % wait-for text [%match% EXPECTED TEXT] [%otherwise% MESSAGE TO USER]
+    % wait-for <voice|image> [%otherwise% MESSAGE TO USER]
+    % wait <INTEGER> <sec|min|h|d> [%otherwise% MESSAGE TO USER]
+    % notify admins [MESSAGE TO ADMINS] [%attach% ATTACHMENT...]
+
+Valid values for ATTACHMENT are:
+
+* contact.vcf
+* chat_log.txt
+* last-text
+* last-image
+* last-voice
+* media.zip
+* full_chat.zip
+
 ## License
 
 All files in this repository are made available under the terms of the
