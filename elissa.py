@@ -104,14 +104,14 @@ def export_media_zip(bot, accid: int, chatid: int) -> str:
                 with z.open(name, "w") as f_out:
                     f_out.write(f_in.read())
     return zipfilename
-def export_chat_zip(bot, accid: int, chatid: int) -> str:
+def export_full_chat_zip(bot, accid: int, chatid: int) -> str:
     """
     Export the full specified chat to a zip file and return the filename.
     """
     contact_vcf = export_contact_vcf(bot, accid, chatid)
     chat_log_txt = export_chat_log_txt(bot, accid, chatid)
     media_zip = export_media_zip(bot, accid, chatid)
-    zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat.zip"
+    zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/full_chat.zip"
     with ZipFile(zipfilename, "w") as z:
         with z.open("contact.vcf", "w") as f_out:
             with open(contact_vcf, "rb") as f_in:
