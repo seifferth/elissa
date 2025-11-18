@@ -485,9 +485,34 @@ def parse_script(script: str):
     validate_script(result)
     return result
 
+def reset_admin_chat(cli, bot, args):
+    """
+    Resets the admin chat, which means that there will be a new invite
+    link and a new empty admin group.
+    """
+    if not args.account:
+        exit("The --account option is mandatory with reset_admin_chat")
+    new_id = cli.reset_admin_chat(bot.rpc, args.account)
+    print(f"Successfully created new admin chat with id {new_id}")
+def list_admins(cli, bot, args):
+    """
+    List the members of the admin chat.
+    """
+    if not args.account:
+        exit("The --account option is mandatory with list_admins")
+    acc = bot.rpc.get_account_info(args.account)
+    admins = bot.rpc.get_chat_contacts(args.account,
+                                cli.get_admin_chat(bot.rpc, args.account))
+    for admin_id in admins:
+        a = bot.rpc.get_contact(acc.id, admin_id)
+        if acc.addr == a.address and a.name == "Me": continue
+        print(a.name_and_addr)
+
 if __name__ == "__main__":
     cli.add_generic_option("--script",
                            help="Filename of the elissa script to use")
+    cli.add_subcommand(reset_admin_chat)
+    cli.add_subcommand(list_admins)
     try:
         cli.start()
     except KeyboardInterrupt:
