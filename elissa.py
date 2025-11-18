@@ -240,8 +240,8 @@ def is_regular_chat(bot, accid, chatid) -> bool:
     elif chat_type == 120:
         return False        # This is probably an e2ee group chat
     else:
-        bot.logger.warn(f"Treating unknown chat a{accid}c{chatid} of type "\
-                        f"'{chat_type}' as a kind of non-regular chat")
+        bot.logger.warning(f"Treating unknown chat a{accid}c{chatid} of type"\
+                           f" '{chat_type}' as a kind of non-regular chat")
         return False
 
 @cli.on(events.NewMessage)
@@ -260,8 +260,8 @@ def handle_message(bot, accid, event):
         # but there might conceivably be some edge cases where this did
         # not work as intended, so in these cases, we send the greeting
         # at this point and log a warning.
-        bot.logger.warn("Using greeting to reply to user message in chat"\
-                        f" {userdir}")
+        bot.logger.warning("Using greeting to reply to user message in chat"\
+                          f" {userdir}")
     elif inst["command"] == "wait-for":
         if event.msg.view_type.lower() != inst["args"][0] \
                     or ("match" in inst and \
@@ -286,10 +286,10 @@ def handle_message(bot, accid, event):
         # If we encounter an unknown command at this point, we log a
         # warning and simply ignore the command.
         c = inst["command"]
-        bot.logger.warn(f"Ignoring unknown command '{c}' in"\
-                        f" '{userdir}/script' at instruction {pointer}."\
-                         " This could potentially indicate that the script"\
-                         " is now blocked.")
+        bot.logger.warning(f"Ignoring unknown command '{c}' in"\
+                           f" '{userdir}/script' at instruction {pointer}."\
+                            " This could potentially indicate that the"\
+                            " script is now blocked.")
         return
     # Since we did not return early, the instruction seems to have worked.
     if inst["reply"].strip():
