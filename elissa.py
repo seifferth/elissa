@@ -162,7 +162,20 @@ def handle_message(bot, accid, event):
     if pointer >= len(script):
         return  # Ignore messages that arrive after the script is finished
     inst = script[pointer]
-    if inst["command"] == "wait-for":
+    if pointer == 0 and inst["command"] == "":
+        # The greeting should have been sent right after secure join;
+        # but there might conceivably be some edge cases where this did
+        # not work as intended, so in these cases, we send the greeting
+        # at this point and log a warning.
+        bot.logger.warn("Using greeting to reply to user message in chat"\
+                        f" {userdir}")
+        reply = MsgData(text=script[0]["reply"])
+        log_message(userdir, reply)
+        bot.rpc.send_msg(accid, event.msg.chat_id, reply)
+        advance_instruction_pointer(userdir)
+        # Start executing the script until it blocks.
+        continue_execution(bot, accid, event.msg.chat_id, userdir, script)
+    elif inst["command"] == "wait-for":
         if event.msg.view_type.lower() != inst["args"][0] \
                     or ("match" in inst and \
                     event.msg.text.split() != inst["match"]):
