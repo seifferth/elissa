@@ -196,7 +196,7 @@ def log_event(bot, accid, event):
     if event.kind == EventType.SECUREJOIN_INVITER_PROGRESS \
     and event.progress == 1000 \
     and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
-        if cli.is_admin(bot.rpc, accid, event.contact_id):
+        if event.chat_id == cli.get_admin_chat(bot.rpc, accid):
             name = bot.rpc.get_contact(accid, event.contact_id).name_and_addr
             bot.logger.info(f"User {name} joined the admin group"\
                             f" for account {accid}")
