@@ -201,6 +201,10 @@ def log_event(bot, accid, event):
             bot.logger.info(f"User {name} joined the admin group"\
                             f" for account {accid}")
             return
+        elif not is_regular_chat(bot, accid, event.chat_id):
+            return  # Do not send messages to non 1:1 conversations
+        elif cli.is_admin(bot.rpc, accid, event.contact_id):
+            return  # Do not treat admins as if they were regular users
         # Bot's QR scanned by an user. This could be a new chat.
         chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
         bot.logger.info(f"Created chat 'a{accid}c{chatid}'")
