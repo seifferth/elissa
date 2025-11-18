@@ -81,9 +81,24 @@ def on_start(bot, args):
         bot.user_basedir = args.config_dir
     try:
         _ = parse_script(bot.script)
+        bot.logger.info(f"Script file '{args.script}' read without errors")
     except Exception as e:
         exit(e)
-    bot.logger.info(f"Script file '{args.script}' read without errors")
+    acclist = bot.rpc.get_all_accounts(); n = len(acclist)
+    bot.logger.info(f"This bot is using {n} account{'s' if n!=1 else ''}")
+    for acc in acclist:
+        admins = bot.rpc.get_chat_contacts(acc.id,
+                                    cli.get_admin_chat(bot.rpc, acc.id))
+        admin_names = []
+        for admin_id in admins:
+            a = bot.rpc.get_contact(acc.id, admin_id)
+            if acc.addr == a.address and a.name == "Me": continue
+            admin_names.append(a.name_and_addr)
+        if admin_names:
+            bot.logger.info(f"Admin group for account {acc.id}: " +
+                            (", ".join(admin_names)))
+        else:
+            bot.logger.info(f"Admin group for account {acc.id} is empty")
     # Wake any tasks that might have been left from a previous run
     taskdir = f"{bot.user_basedir}/tasks"
     if not os.path.isdir(taskdir): os.makedirs(taskdir)
@@ -101,6 +116,11 @@ def log_event(bot, accid, event):
     if event.kind == EventType.SECUREJOIN_INVITER_PROGRESS \
     and event.progress == 1000 \
     and not bot.rpc.get_contact(accid, event.contact_id).is_bot:
+        if cli.is_admin(bot.rpc, accid, event.contact_id):
+            name = bot.rpc.get_contact(accid, event.contact_id).name_and_addr
+            bot.logger.info(f"User {name} joined the admin group"\
+                            f" for account {accid}")
+            return
         # Bot's QR scanned by an user. This could be a new chat.
         chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
         bot.logger.info(f"Created chat 'a{accid}c{chatid}'")
@@ -135,6 +155,8 @@ def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
 
 @cli.on(events.NewMessage)
 def handle_message(bot, accid, event):
+    if cli.is_admin(bot.rpc, accid, event.msg.sender.id):
+        return  # Do not treat admins as if they were regular users
     userdir, script, pointer = get_userdir(bot, accid, event.msg.chat_id)
     log_message(userdir, event.msg)
     if pointer >= len(script):
