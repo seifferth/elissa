@@ -8,12 +8,6 @@ from deltachat2 import EventType, MsgData, events
 
 cli = BotCli("elissa")
 
-def get_chat_name(bot, accid: int, chatid: int) -> str:
-    """
-    Since 1:1 chats are named after contacts, this is a quick way to
-    get the contact's name.
-    """
-    return bot.rpc.get_full_chat_by_id(accid, chatid).name
 def export_chat_zip(bot, accid: int, chatid: int) -> str:
     """
     Export the specified chat to a zip file and return the filename.
