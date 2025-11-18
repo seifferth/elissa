@@ -276,13 +276,14 @@ def handle_message(bot, accid, event):
             log_message(userdir, reply)
         return
     else:
-        # If we encounter an unknown command at this point, we log an
-        # error and proceed as if the command was successful. Note that
-        # this code path should be dead since the script is validated
-        # when it is read.
+        # If we encounter an unknown command at this point, we log a
+        # warning and simply ignore the command.
         c = inst["command"]
-        bot.logger.error(f"Processed reply for unknown command '{c}' in"\
-                         f"'{userdir}/script' at instruction {pointer}.")
+        bot.logger.warn(f"Ignoring unknown command '{c}' in"\
+                        f" '{userdir}/script' at instruction {pointer}."\
+                         " This could potentially indicate that the script"\
+                         " is now blocked.")
+        return
     # Since we did not return early, the instruction seems to have worked.
     if inst["reply"].strip():
         reply = MsgData(text=inst["reply"])
