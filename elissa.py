@@ -403,7 +403,18 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
 
 def log_message(userdir: str, message) -> None:
     with open(f"{userdir}/conversation.log", "a") as f:
-        print(message, file=f)
+        if type(message) == MsgData:
+            t = datetime.datetime.now().strftime("%F %T")
+            f.write(f"[{t}] Bot: {message.text}\n")
+        else:
+            m = message
+            t = datetime.datetime.fromtimestamp(m.timestamp).strftime("%F %T")
+            if m.text and not m.sender.auth_name:
+                f.write(f"[{t}] {m.text}\n")
+            elif m.text:
+                f.write(f"[{t}] {m.sender.auth_name}: {m.text}\n")
+            if m.file and m.file_name:
+                f.write(f"[{t}] {m.sender.auth_name} sent {m.file_name}\n")
 
 def validate_script(parsed_script: list[dict]) -> None:
     def check_subclauses(i: int, inst: dict, allowed_subclauses: list):
