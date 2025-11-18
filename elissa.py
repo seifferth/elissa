@@ -15,6 +15,7 @@ def export_contact_vcf(bot, accid: int, chatid: int) -> str:
     """
     vcard = bot.rpc.make_vcard(accid,
                                bot.rpc.get_chat_contacts(accid, chatid))
+    if not vcard.endswith("\n"): vcard += "\n"
     filename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/contact.vcf"
     with open(filename, "wb") as f:
         f.write(vcard.encode("utf-8"))
@@ -39,7 +40,7 @@ def export_chat_log_txt(bot, accid: int, chatid: int) -> str:
             chatlog.append(f"[{t}] {m.sender.auth_name} sent {m.file_name}")
     logfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat_log.txt"
     with open(logfilename, "wb") as f:
-        f.write("\n".join(chatlog).encode("utf-8"))
+        f.write(("\n".join(chatlog)+"\n").encode("utf-8"))
     return logfilename
 def _export_last(view_type: str, bot, accid: int, chatid: int) -> str:
     botaddr = bot.rpc.get_account_info(accid).addr
