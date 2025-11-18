@@ -63,7 +63,7 @@ class WaitJob(Thread):
         bot = self.bot; accid = self.a; chatid = self.c; timestamp = self.t
         now = int(datetime.datetime.now().strftime('%s'))
         time.sleep(max(0, timestamp - now))
-        userdir, script, pointer = get_userdir(bot, accid, chatid)
+        userdir, script, pointer = load_userdir(bot, accid, chatid)
         if pointer < len(script) and script[pointer]["reply"].strip():
             reply = MsgData(text=script[pointer]["reply"])
             log_message(userdir, reply)
@@ -124,7 +124,7 @@ def log_event(bot, accid, event):
         # Bot's QR scanned by an user. This could be a new chat.
         chatid = bot.rpc.create_chat_by_contact_id(accid, event.contact_id)
         bot.logger.info(f"Created chat 'a{accid}c{chatid}'")
-        userdir, script, pointer = get_userdir(bot, accid, chatid)
+        userdir, script, pointer = load_userdir(bot, accid, chatid)
         # If applicable, send greeting message
         if pointer == 0 and len(script) > 0 and script[0]["command"] == "":
             reply = MsgData(text=script[0]["reply"])
@@ -134,7 +134,7 @@ def log_event(bot, accid, event):
         # Start executing the script until it blocks.
         continue_execution(bot, accid, chatid, userdir, script)
 
-def get_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
+def load_userdir(bot, accid: int, chatid: int) -> tuple[str,list[dict],int]:
     """
     Read the userdir (or initialize it if it does not yet exist).
 
