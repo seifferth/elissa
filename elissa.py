@@ -36,7 +36,7 @@ def export_chat_zip(bot, accid: int, chatid: int) -> str:
             media[m.file_name] = m.file
     zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat.zip"
     with ZipFile(zipfilename, "w") as z:
-        with z.open("contact.vcard", "w") as f:
+        with z.open("contact.vcf", "w") as f:
             f.write(vcard.encode("utf-8"))
         with z.open("chat_log.txt", "w") as f:
             f.write("\n".join(chatlog).encode("utf-8"))
