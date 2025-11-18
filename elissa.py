@@ -329,7 +329,7 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
         # error and simply ignore the command.
         c = inst["command"]
         bot.logger.error(f"Skipped unknown command '{c}' in"\
-                         f"'{userdir}/script' at instruction {pointer}.")
+                         f" '{userdir}/script' at instruction {pointer}.")
     advance_instruction_pointer(userdir)
     continue_execution(bot, accid, chatid, userdir, script)
 
