@@ -14,7 +14,7 @@ def get_chat_name(bot, accid: int, chatid: int) -> str:
     get the contact's name.
     """
     return bot.rpc.get_full_chat_by_id(accid, chatid).name
-def export_chat(bot, accid: int, chatid: int, include_media=True) -> str:
+def export_chat_zip(bot, accid: int, chatid: int) -> str:
     """
     Export the specified chat to a zip file and return the filename.
     """
@@ -40,11 +40,10 @@ def export_chat(bot, accid: int, chatid: int, include_media=True) -> str:
             f.write(vcard.encode("utf-8"))
         with z.open("chat_log.txt", "w") as f:
             f.write("\n".join(chatlog).encode("utf-8"))
-        if include_media:
-            for name, path in media.items():
-                with open(path, "rb") as f_in:
-                    with z.open(name, "w") as f_out:
-                        f_out.write(f_in.read())
+        for name, path in media.items():
+            with open(path, "rb") as f_in:
+                with z.open(name, "w") as f_out:
+                    f_out.write(f_in.read())
     return zipfilename
 
 class WaitJob(Thread):
@@ -222,7 +221,7 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
     if pointer >= len(script):
         # TODO: This was the last instruction. If any action is to be
         # taken after the last instruction, take that action here!
-        export_chat(bot, accid, chatid)
+        export_chat_zip(bot, accid, chatid)
         return
     elif script[pointer]["command"] == "wait-for":
         return                          # Block until the next message arrives
