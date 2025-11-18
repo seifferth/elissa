@@ -108,32 +108,22 @@ def export_chat_zip(bot, accid: int, chatid: int) -> str:
     """
     Export the full specified chat to a zip file and return the filename.
     """
-    vcard = bot.rpc.make_vcard(accid,
-                               bot.rpc.get_chat_contacts(accid, chatid))
-    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
-    msgdict = bot.rpc.get_messages(accid, mids)
-    chatlog = []; media = {}
-    for i in mids:
-        m = msgdict[str(i)]
-        t = datetime.datetime.fromtimestamp(m.timestamp)
-        if m.text and not m.sender.auth_name:
-            chatlog.append(f"[{t}] {m.text}")
-        elif m.text:
-            chatlog.append(f"[{t}] {m.sender.auth_name}: {m.text}" +
-                           (" [edited]" if m.is_edited else ""))
-        if m.file and m.file_name:
-            chatlog.append(f"[{t}] {m.sender.auth_name} sent {m.file_name}")
-            media[m.file_name] = m.file
+    contact_vcf = export_contact_vcf(bot, accid, chatid)
+    chat_log_txt = export_chat_log_txt(bot, accid, chatid)
+    media_zip = export_media_zip(bot, accid, chatid)
     zipfilename = f"{bot.user_basedir}/chats/a{accid}c{chatid}/chat.zip"
     with ZipFile(zipfilename, "w") as z:
-        with z.open("contact.vcf", "w") as f:
-            f.write(vcard.encode("utf-8"))
-        with z.open("chat_log.txt", "w") as f:
-            f.write("\n".join(chatlog).encode("utf-8"))
-        for name, path in media.items():
-            with open(path, "rb") as f_in:
-                with z.open(name, "w") as f_out:
-                    f_out.write(f_in.read())
+        with z.open("contact.vcf", "w") as f_out:
+            with open(contact_vcf, "rb") as f_in:
+                f_out.write(f_in.read())
+        with z.open("chat_log.txt", "w") as f_out:
+            with open(chat_log_txt, "rb") as f_in:
+                f_out.write(f_in.read())
+        with ZipFile(media_zip) as z_in:
+            for filename in z_in.namelist():
+                with z.open(filename, "w") as f_out:
+                    with z_in.open(filename) as f_in:
+                        f_out.write(f_in.read())
     return zipfilename
 
 class WaitJob(Thread):
