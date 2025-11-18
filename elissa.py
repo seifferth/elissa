@@ -249,12 +249,6 @@ def handle_message(bot, accid, event):
         # at this point and log a warning.
         bot.logger.warn("Using greeting to reply to user message in chat"\
                         f" {userdir}")
-        reply = MsgData(text=script[0]["reply"])
-        log_message(userdir, reply)
-        bot.rpc.send_msg(accid, event.msg.chat_id, reply)
-        advance_instruction_pointer(userdir)
-        # Start executing the script until it blocks.
-        continue_execution(bot, accid, event.msg.chat_id, userdir, script)
     elif inst["command"] == "wait-for":
         if event.msg.view_type.lower() != inst["args"][0] \
                     or ("match" in inst and \
@@ -326,10 +320,14 @@ def continue_execution(bot, accid, chatid, userdir, script) -> None:
         return                          # Block until the wait job terminates
     else:
         # If we encounter an unknown command at this point, we log an
-        # error and simply ignore the command.
-        c = inst["command"]
+        # error and simply treat the command as if it had been successful.
+        c = script[pointer]["command"]
         bot.logger.error(f"Skipped unknown command '{c}' in"\
                          f" '{userdir}/script' at instruction {pointer}.")
+    if script[pointer]["reply"].strip():
+        reply = MsgData(text=script[pointer]["reply"])
+        bot.rpc.send_msg(accid, chatid, reply)
+        log_message(userdir, reply)
     advance_instruction_pointer(userdir)
     continue_execution(bot, accid, chatid, userdir, script)
 
