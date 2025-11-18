@@ -143,6 +143,16 @@ class WaitJob(Thread):
         bot.logger.info(f"Task a{accid}c{chatid}.wait finished successfully")
         continue_execution(bot, accid, chatid, userdir, script)
 
+@cli.on_init
+def on_init(bot, args):
+    acclist = bot.rpc.get_all_accounts()
+    for acc in acclist:
+        if not acc.display_name: continue
+        c = bot.rpc.get_basic_chat_info(acc.id,
+                                        cli.get_admin_chat(bot.rpc, acc.id))
+        newname = f"{acc.display_name} Admins"
+        if c.name != newname: bot.rpc.set_chat_name(acc.id, c.id, newname)
+
 @cli.on_start
 def on_start(bot, args):
     if not args.script: exit("The --script option is mandatory with serve")
