@@ -246,6 +246,16 @@ def is_regular_chat(bot, accid, chatid) -> bool:
         bot.logger.warning(f"Treating unknown chat a{accid}c{chatid} of type"\
                            f" '{chat_type}' as a kind of non-regular chat")
         return False
+def last_reply_timestamp(bot, accid, chatid) -> int:
+    """Return the unix timestamp of the last reply sent by the bot."""
+    botaddr = bot.rpc.get_account_info(accid).addr
+    mids = bot.rpc.get_message_ids(accid, chatid, False, False)
+    msgdict = bot.rpc.get_messages(accid, mids)
+    for i in mids[::-1]:
+        m = msgdict[str(i)]
+        if m.sender.address != botaddr: continue   # Ignore incoming messages
+        return m.timestamp
+    return None
 
 @cli.on(events.NewMessage)
 def handle_message(bot, accid, event):
@@ -253,6 +263,10 @@ def handle_message(bot, accid, event):
         return  # Do not send messages to non 1:1 conversations
     elif cli.is_admin(bot.rpc, accid, event.msg.sender.id):
         return  # Do not treat admins as if they were regular users
+    t = last_reply_timestamp(bot, accid, event.msg.chat_id)
+    if t and event.msg.timestamp <= t:
+        return  # Handle out-of-order message delivery by simply ignoring
+                # messages that arrive too late.
     userdir, script, pointer = load_userdir(bot, accid, event.msg.chat_id)
     log_message(userdir, event.msg)
     if pointer >= len(script):
