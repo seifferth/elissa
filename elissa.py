@@ -46,7 +46,6 @@ def _locate_last(view_type: str, bot, accid: int, chatid: int) -> int:
     botaddr = bot.rpc.get_account_info(accid).addr
     mids = bot.rpc.get_message_ids(accid, chatid, False, False)
     msgdict = bot.rpc.get_messages(accid, mids)
-    chatlog = []
     for i in mids[::-1]:
         m = msgdict[str(i)]
         if m.sender.address == botaddr: continue   # Ignore sent messages
